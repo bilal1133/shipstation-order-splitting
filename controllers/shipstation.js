@@ -1,5 +1,5 @@
 const axios = require("axios");
-
+// 87862
 /**
  * Receives and processes a new order webhook from ShipStation.
  */
@@ -31,33 +31,51 @@ exports.newOrders = async (req, res, next) => {
  *
  * @param  {array} newOrders an array of order objects from ShipStation
  */
+
+const skusToTrack = ["test0002"];
 const analyzeOrders = async (newOrders) => {
   // Loop through each new order.
   for (let x = 0; x < newOrders.length; x++) {
     try {
       const order = newOrders[x];
+      console.log("🔥🍊🍉 In Analyze", order.items.length);
+      if (order.items.length != 1) {
+        const sameOrderItems = [];
 
-      // Create an array of all the individual warehouseLocations present on the order.
-      const warehouses = [
-        ...new Set(
-          order.items.map((item) => {
-            if (item.warehouseLocation != null) {
-              return item.warehouseLocation;
-            }
-          })
-        ),
-      ];
+        const foundItems = [];
+        order.items.filter((item) => {
+          if (skusToTrack.includes(item.sku)) {
+            foundItems.push(item);
+          } else {
+            sameOrderItems.push(item);
+          }
+        });
 
-      // If there are multiple warehouse locations, split the order.
-      if (warehouses.length > 1) {
-        const orderUpdateArray = splitShipstationOrder(order, warehouses);
-        await shipstationApiCall(
-          "https://ssapi.shipstation.com/orders/createorders",
-          "post",
-          orderUpdateArray
-        );
+        const orderKey = order.orderKey;
+        const orderId = order.orderId;
+
+        let orderUpdateArray = [];
+        if (foundItems.length !== 0) {
+          orderUpdateArray = [...splitShipstationOrder(order, foundItems)];
+
+          if (sameOrderItems.length != 0) {
+            orderUpdateArray.push(createOrderForItems(order, sameOrderItems));
+          }
+          orderUpdateArray[orderUpdateArray.length - 1].orderKey = orderKey;
+          orderUpdateArray[orderUpdateArray.length - 1].orderId = orderId;
+
+          console.log("🔥🍊🍉 ", orderUpdateArray);
+          console.log("🔥🍊🍉 ", orderUpdateArray.length);
+
+          await shipstationApiCall(
+            "https://ssapi.shipstation.com/orders/createorders",
+            "post",
+            orderUpdateArray
+          );
+        }
       }
     } catch (err) {
+      console.log("🔥🍊🍉 ERR ", err);
       throw new Error(err);
     }
   }
@@ -72,35 +90,33 @@ const analyzeOrders = async (newOrders) => {
  *
  * @return {array} an array of order objects to be updated in ShipStation
  */
-const splitShipstationOrder = (order, warehouses) => {
+const splitShipstationOrder = (order, newItems) => {
   let orderUpdateArray = [];
 
+  delete order.orderKey;
+  delete order.orderId;
+
   // Loop through every warehouse present on the order.
-  for (let x = 0; x < warehouses.length; x++) {
+  for (let x = 0; x < newItems.length; x++) {
     try {
       // Create a copy of the original order object.
       let tempOrder = { ...order };
-
+      console.log("🔥🍊🍉 newItems", newItems);
       // Give the new order a number to include the warehouse as a suffix.
-      tempOrder.orderNumber = `${tempOrder.orderNumber}-${warehouses[x]}`;
+      tempOrder.orderNumber = `${tempOrder.orderNumber}-${newItems[x].sku}`;
 
       // Filter for the order items for this specific warehouse.
-      tempOrder.items = tempOrder.items.filter((item) => {
-        // If the item's warehouseLocation is null, assign it to the first warehouse present.
-        if (item.warehouseLocation == null && x === 0) {
-          item.warehouseLocation = warehouses[x];
-        }
-        return item.warehouseLocation === warehouses[x];
-      });
-
+      tempOrder.items = [newItems[x]];
+      tempOrder.tagIds = [process.env.TAG_ID];
       // If this is not the first (primary) order, set the object to create new order in ShipStation.
-      if (x !== 0) {
-        delete tempOrder.orderKey;
-        delete tempOrder.orderId;
-        tempOrder.amountPaid = 0;
-        tempOrder.taxAmount = 0;
-        tempOrder.shippingAmount = 0;
-      }
+      // if (x !== 0) {
+      //   delete tempOrder.orderKey;
+      //   delete tempOrder.orderId;
+      //   tempOrder.amountPaid = 0;
+      //   tempOrder.taxAmount = 0;
+      //   tempOrder.shippingAmount = 0;
+      // }
+      console.log("🔥🍊🍉 tempOrder", tempOrder);
       orderUpdateArray.push(tempOrder);
     } catch (err) {
       throw new Error(err);
@@ -108,6 +124,22 @@ const splitShipstationOrder = (order, warehouses) => {
   }
 
   return orderUpdateArray;
+};
+
+const createOrderForItems = (order, items) => {
+  let tempOrder = { ...order };
+
+  delete tempOrder.orderKey;
+  delete tempOrder.orderId;
+
+  // Give the new order a number to include the warehouse as a suffix.
+  tempOrder.orderNumber = `${tempOrder.orderNumber}-Secondary`;
+
+  // Filter for the order items for this specific warehouse.
+  tempOrder.items = items;
+  tempOrder.tagIds = [process.env.TAG_ID];
+
+  return tempOrder;
 };
 
 /**
@@ -126,7 +158,7 @@ const shipstationApiCall = async (url, method, body) => {
       url: url,
       headers: {
         // Your API Authorization token goes here.
-        Authorization: process.env.SHIPSTATION_API_KEY,
+        Authorization: `Basic ${process.env.SHIPSTATION_KEY}`,
         "Content-Type": "application/json",
       },
     };
