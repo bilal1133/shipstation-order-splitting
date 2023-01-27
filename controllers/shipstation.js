@@ -32,7 +32,7 @@ exports.newOrders = async (req, res, next) => {
  * @param  {array} newOrders an array of order objects from ShipStation
  */
 
-const skusToTrack = ["test0002"];
+const skusToTrack = process.env.SKUS_TO_TRACK;
 const analyzeOrders = async (newOrders) => {
   // Loop through each new order.
   for (let x = 0; x < newOrders.length; x++) {
