@@ -58,11 +58,11 @@ const analyzeOrders = async (newOrders) => {
         if (foundItems.length !== 0) {
           orderUpdateArray = [...splitShipstationOrder(order, foundItems)];
 
-          if (sameOrderItems.length != 0) {
-            orderUpdateArray.push(createOrderForItems(order, sameOrderItems));
-          }
-          orderUpdateArray[orderUpdateArray.length - 1].orderKey = orderKey;
-          orderUpdateArray[orderUpdateArray.length - 1].orderId = orderId;
+          // if (sameOrderItems.length != 0) {
+          //   orderUpdateArray.push(createOrderForItems(order, sameOrderItems));
+          // }
+          // orderUpdateArray[orderUpdateArray.length - 1].orderKey = orderKey;
+          // orderUpdateArray[orderUpdateArray.length - 1].orderId = orderId;
 
           console.log("🔥🍊🍉 ", orderUpdateArray);
           console.log("🔥🍊🍉 ", orderUpdateArray.length);
@@ -103,7 +103,7 @@ const splitShipstationOrder = (order, newItems) => {
       let tempOrder = { ...order };
       console.log("🔥🍊🍉 newItems", newItems);
       // Give the new order a number to include the warehouse as a suffix.
-      tempOrder.orderNumber = `${tempOrder.orderNumber}-${newItems[x].sku}`;
+      tempOrder.orderNumber = `${tempOrder.orderNumber}-Number-${x + 1}`;
 
       // Filter for the order items for this specific warehouse.
       tempOrder.items = [newItems[x]];
@@ -133,7 +133,7 @@ const createOrderForItems = (order, items) => {
   delete tempOrder.orderId;
 
   // Give the new order a number to include the warehouse as a suffix.
-  tempOrder.orderNumber = `${tempOrder.orderNumber}-Secondary`;
+  tempOrder.orderNumber = `${tempOrder.orderNumber}-NUMER-2`;
 
   // Filter for the order items for this specific warehouse.
   tempOrder.items = items;
