@@ -50,7 +50,8 @@ const analyzeOrders = async (newOrders) => {
             sameOrderItems.push(item);
           }
         });
-
+        console.log("🔥🍊🍉 foundItems", foundItems);
+        console.log("🔥🍊🍉 sameOrderItems", sameOrderItems);
         const orderKey = order.orderKey;
         const orderId = order.orderId;
 
@@ -58,11 +59,11 @@ const analyzeOrders = async (newOrders) => {
         if (foundItems.length !== 0) {
           orderUpdateArray = [...splitShipstationOrder(order, foundItems)];
 
-          // if (sameOrderItems.length != 0) {
-          //   orderUpdateArray.push(createOrderForItems(order, sameOrderItems));
-          // }
-          // orderUpdateArray[orderUpdateArray.length - 1].orderKey = orderKey;
-          // orderUpdateArray[orderUpdateArray.length - 1].orderId = orderId;
+          if (sameOrderItems.length != 0) {
+            orderUpdateArray.push(createOrderForItems(order, sameOrderItems));
+            orderUpdateArray[orderUpdateArray.length - 1].orderKey = orderKey;
+            orderUpdateArray[orderUpdateArray.length - 1].orderId = orderId;
+          }
 
           console.log("🔥🍊🍉 ", orderUpdateArray);
           console.log("🔥🍊🍉 ", orderUpdateArray.length);
@@ -71,6 +72,13 @@ const analyzeOrders = async (newOrders) => {
             "https://ssapi.shipstation.com/orders/createorders",
             "post",
             orderUpdateArray
+          );
+        }
+        if (sameOrderItems.length === 0) {
+          // orderId
+          await shipstationApiCall(
+            `https://ssapi.shipstation.com/orders/${orderId}`,
+            "delete"
           );
         }
       }
@@ -116,7 +124,7 @@ const splitShipstationOrder = (order, newItems) => {
       //   tempOrder.taxAmount = 0;
       //   tempOrder.shippingAmount = 0;
       // }
-      console.log("🔥🍊🍉 tempOrder", tempOrder);
+
       orderUpdateArray.push(tempOrder);
     } catch (err) {
       throw new Error(err);
